@@ -107,7 +107,7 @@ State -1  →  TRAP (early exit)
 
 ## Author
 
-Course: CPT411 — Automata Theory  
+Course: CPT411 — Automata Theory & Formal Languages
 Assignment: L6 — English Stop Words Finder
 
 **Sabrina binti Sofian**  
