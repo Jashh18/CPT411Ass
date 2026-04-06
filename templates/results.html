@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results — Stop Word Detector</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
+            overflow: hidden;
+        }
+
+        /* ── Header ─────────────────────────────────────────────────────── */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.2em; margin-bottom: 8px; }
+        .header p  { opacity: .9; }
+
+        /* ── Nav ─────────────────────────────────────────────────────────── */
+        .nav { padding: 14px 28px; border-bottom: 1px solid #e8e8e8; }
+        .nav a {
+            color: #667eea; text-decoration: none; font-weight: 700;
+            padding: 7px 14px; border-radius: 6px; transition: background .2s;
+        }
+        .nav a:hover { background: #f0f0f0; }
+
+        /* ── Content ─────────────────────────────────────────────────────── */
+        .content { padding: 36px 40px; }
+
+        /* ── Status card ─────────────────────────────────────────────────── */
+        .status-card {
+            padding: 28px 30px;
+            border-radius: 14px;
+            margin-bottom: 30px;
+            text-align: center;
+            color: #fff;
+        }
+        .status-card.accept { background: linear-gradient(135deg, #48bb78, #38a169); }
+        .status-card.reject { background: linear-gradient(135deg, #f56565, #e53e3e); }
+        .status-card h2     { font-size: 2em; margin-bottom: 6px; }
+        .status-card .big   { font-size: 2.8em; font-weight: 800; }
+
+        /* ── Section wrapper ─────────────────────────────────────────────── */
+        .section {
+            background: #f7f9fc;
+            padding: 24px;
+            border-radius: 14px;
+            margin-bottom: 26px;
+        }
+        .section h3 { color: #333; margin-bottom: 14px; font-size: 1.25em; }
+
+        /* ── FIX #3 — Pattern display ────────────────────────────────────── */
+        .pattern-box {
+            background: #fff;
+            border: 1px solid #dde3f0;
+            border-radius: 10px;
+            padding: 16px 20px;
+            margin-bottom: 26px;
+        }
+        .pattern-box h3 { color: #444; margin-bottom: 10px; font-size: 1.1em; }
+        .pattern-row    { display: flex; flex-wrap: wrap; gap: 8px; }
+        .pat-badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 5px 16px;
+            border-radius: 20px;
+            font-size: .9em;
+            font-weight: 600;
+        }
+
+        /* ── Visualised text ─────────────────────────────────────────────── */
+        .vis-text {
+            background: #fff;
+            border: 1px solid #dde3f0;
+            border-radius: 10px;
+            padding: 18px 20px;
+            font-family: 'Courier New', monospace;
+            line-height: 1.75;
+            white-space: pre-wrap;
+            word-break: break-word;
+            overflow-x: auto;
+            font-size: .95em;
+        }
+        /* FIX #4: highlighted span uses original casing from text */
+        .stopword {
+            background: #fbbf24;
+            color: #1a1a1a;
+            font-weight: 700;
+            padding: 1px 4px;
+            border-radius: 3px;
+        }
+
+        /* ── Summary counts table ────────────────────────────────────────── */
+        .count-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .count-cell {
+            flex: 1 1 110px;
+            background: #fff;
+            border: 1px solid #dde3f0;
+            border-radius: 10px;
+            padding: 14px 12px;
+            text-align: center;
+        }
+        .count-cell .word  { font-size: 1.1em; font-weight: 700; color: #667eea; }
+        .count-cell .count { font-size: 2em;   font-weight: 800; color: #333;   }
+        .count-cell .label { font-size: .78em; color: #888; margin-top: 2px;   }
+
+        /* ── Detailed results table ──────────────────────────────────────── */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead th {
+            background: #667eea;
+            color: #fff;
+            padding: 11px 14px;
+            text-align: left;
+            font-size: .95em;
+        }
+        tbody td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #eef0f5;
+            font-size: .93em;
+            vertical-align: top;
+        }
+        tbody tr:hover { background: #f5f6ff; }
+        .word-badge {
+            background: #fbbf24;
+            color: #1a1a1a;
+            padding: 3px 12px;
+            border-radius: 16px;
+            font-weight: 700;
+            font-size: .88em;
+            display: inline-block;
+        }
+        .orig-badge {
+            background: #e0e7ff;
+            color: #3730a3;
+            padding: 3px 10px;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: .88em;
+            display: inline-block;
+            margin-left: 4px;
+        }
+        .ctx {
+            font-family: monospace;
+            background: #f0f2f8;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: .88em;
+            word-break: break-all;
+        }
+
+        /* ── DFA info list ───────────────────────────────────────────────── */
+        .info-list { list-style: none; line-height: 2; }
+        .info-list li::before { content: "✅ "; }
+
+        /* ── Back button ─────────────────────────────────────────────────── */
+        .btn-back {
+            display: inline-block;
+            padding: 11px 28px;
+            background: #667eea;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 30px;
+            font-weight: 600;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-back:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(102,126,234,.4); }
+
+        footer {
+            text-align: center;
+            padding: 18px;
+            background: #f7f9fc;
+            color: #777;
+            font-size: .88em;
+        }
+
+        @media (max-width: 640px) {
+            .content { padding: 20px 16px; }
+            .header h1 { font-size: 1.6em; }
+            thead th, tbody td { padding: 8px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>DFA Stop Word Analysis</h1>
+    </div>
+
+    <div class="nav">
+        <a href="/">← Back to Home</a>
+    </div>
+
+    <div class="content">
+
+        <!-- ── FIX #3: Explicit Pattern display ──────────────────────────── -->
+        <div class="pattern-box">
+            <h3>🎯 Input Patterns (Stop Words Searched For):</h3>
+            <div class="pattern-row">
+                {% for word in stop_words %}
+                    <span class="pat-badge">{{ word }}</span>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- ── Accept / Reject status ─────────────────────────────────────── -->
+        {% if total_count > 0 %}
+            <div class="status-card accept">
+                <h2>✅ ACCEPTED</h2>
+                <p>Stop words were found in the text.</p>
+                <div class="big">{{ total_count }}</div>
+                <p>occurrence(s) detected</p>
+            </div>
+        {% else %}
+            <div class="status-card reject">
+                <h2>❌ REJECTED</h2>
+                <p>No stop words were found in the text.</p>
+            </div>
+        {% endif %}
+
+        <!-- ── Per-word occurrence counts ────────────────────────────────── -->
+        {% if total_count > 0 %}
+        <div class="section">
+            <h3>📈 Occurrences per Stop Word</h3>
+            <div class="count-grid">
+                {% for word in stop_words %}
+                <div class="count-cell">
+                    <div class="word">{{ word }}</div>
+                    <div class="count">{{ word_counts[word] }}</div>
+                    <div class="label">occurrence(s)</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- ── Visualised text ───────────────────────────────────────────── -->
+        <div class="section">
+            <h3>
+                📖 Visualised Text
+                <span style="font-size:.85em; font-weight:400; color:#555;">
+                    — stop words highlighted in
+                    <span style="background:#fbbf24; padding:1px 6px; border-radius:3px; font-weight:700;">yellow</span>
+                </span>
+            </h3>
+            <!-- FIX #4: visualise_text_with_stopwords now preserves original casing -->
+            <div class="vis-text">{{ visualized_text|safe }}</div>
+        </div>
+
+        <!-- ── Detailed results table ────────────────────────────────────── -->
+        {% if results %}
+        <div class="section">
+            <h3>🔍 Detailed Results</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Stop Word</th>
+                        <th>As Found in Text</th>
+                        <th>Position</th>
+                        <th>Context</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for r in results %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><span class="word-badge">{{ r.word }}</span></td>
+                        <!-- FIX #4: show the actual casing from the file -->
+                        <td><span class="orig-badge">{{ r.original }}</span></td>
+                        <td>{{ r.position }}</td>
+                        <td><span class="ctx">…{{ r.context }}…</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% endif %}
+
+        <!-- ── DFA processing info ───────────────────────────────────────── -->
+        <!-- <div class="section">
+            <h3>⚙️ DFA Processing Information</h3>
+            <ul class="info-list">
+                <li>Processed one character at a time (no string matching APIs used)</li>
+                <li>19 states + 1 trap state covering {{ stop_words|length }} stop words</li>
+                <li>Trap state terminates processing early on invalid character paths</li>
+                <li>Case-insensitive: "The", "THE", "the" all recognised correctly</li>
+                <li>Punctuation-aware: "the," and "and." correctly recognised (FIX applied)</li>
+                <li>Original casing preserved in highlights and results table</li>
+            </ul>
+        </div> -->
+
+        <div style="text-align:center; padding-top:8px;">
+            <a href="/" class="btn-back">📁 Process Another File</a>
+        </div>
+
+    </div><!-- /.content -->
+
+</div>
+</body>
+</html>

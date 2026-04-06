@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stop Word Detector — DFA Implementation</title>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 860px;
+            margin: 0 auto;
+            background: #fff;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,.3);
+            overflow: hidden;
+        }
+
+        /* ── Header ─────────────────────────────────────────────────────── */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 36px 30px;
+            text-align: center;
+        }
+        .header h1 { font-size: 2.2em; margin-bottom: 8px; }
+        .header p  { opacity: .9; font-size: 1.05em; }
+
+        /* ── Body content ───────────────────────────────────────────────── */
+        .content { padding: 40px; }
+
+        /* ── Stop-word badges ───────────────────────────────────────────── */
+        .sw-box {
+            background: #f7f9fc;
+            padding: 20px 24px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            margin-bottom: 30px;
+        }
+        .sw-box h3 { color: #333; margin-bottom: 12px; }
+        .badge-row { display: flex; flex-wrap: wrap; gap: 10px; }
+        .badge {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            padding: 7px 18px;
+            border-radius: 25px;
+            font-size: .9em;
+            font-weight: 600;
+            letter-spacing: .5px;
+        }
+        .sw-note { margin-top: 10px; color: #666; font-size: .88em; }
+
+        /* ── Upload area ─────────────────────────────────────────────────── */
+        .upload-area {
+            border: 3px dashed #ccc;
+            border-radius: 12px;
+            padding: 44px 30px;
+            text-align: center;
+            transition: border-color .25s, background .25s;
+            margin-bottom: 24px;
+            cursor: pointer;
+        }
+        .upload-area.drag-over {
+            border-color: #667eea;
+            background: #f0f2ff;
+        }
+
+        /* Hidden native file input */
+        #fileInput { display: none; }
+
+        /* Styled label acts as the "Choose File" button */
+        .btn-choose {
+            display: inline-block;
+            padding: 12px 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: #fff;
+            border-radius: 50px;
+            font-size: 1.05em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform .2s, box-shadow .2s;
+        }
+        .btn-choose:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(102,126,234,.45); }
+
+        .upload-hint { margin-top: 14px; color: #888; font-size: .9em; }
+        .file-name   { margin-top: 10px; font-weight: 600; color: #667eea; min-height: 1.2em; }
+
+        /* FIX #7 — explicit submit button so the form works without JS */
+        .btn-submit {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #48bb78, #38a169);
+            color: #fff;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1em;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform .2s, box-shadow .2s;
+            margin-top: 6px;
+        }
+        .btn-submit:hover  { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(72,187,120,.45); }
+        .btn-submit:disabled { opacity: .5; cursor: not-allowed; transform: none; box-shadow: none; }
+
+        /* ── Info box ────────────────────────────────────────────────────── */
+        .info-box {
+            margin-top: 26px;
+            padding: 18px 20px;
+            background: #e8f4fd;
+            border-radius: 10px;
+            color: #004085;
+            font-size: .9em;
+            line-height: 1.75;
+        }
+        .info-box strong { display: block; margin-bottom: 4px; }
+
+        /* ── Footer ──────────────────────────────────────────────────────── */
+        footer {
+            text-align: center;
+            padding: 18px;
+            background: #f7f9fc;
+            color: #777;
+            font-size: .88em;
+        }
+
+        @media (max-width: 600px) {
+            .content { padding: 24px 16px; }
+            .header h1 { font-size: 1.6em; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div class="header">
+        <h1>🔍 Stop Word Detector</h1>
+        <!-- <p>Deterministic Finite Automaton (DFA) — L6 English Stop Words Finder</p> -->
+    </div>
+
+    <div class="content">
+
+        <!-- Stop-word badge list -->
+        <div class="sw-box">
+            <h3>📝 Patterns (Stop Words) Being Detected:</h3>
+            <div class="badge-row">
+                {% for word in stop_words %}
+                    <span class="badge">{{ word }}</span>
+                {% endfor %}
+            </div>
+            <!-- <p class="sw-note">
+                ⚡ The DFA processes one character at a time — no string matching functions or regex used.
+            </p> -->
+        </div>
+
+        <!-- Upload form
+             FIX #7: form now has an explicit submit button so it works
+                     even when JavaScript is disabled. -->
+        <form id="uploadForm" action="/upload" method="post" enctype="multipart/form-data">
+            <div class="upload-area" id="uploadArea">
+                <input type="file" name="file" id="fileInput" accept=".txt">
+                <label for="fileInput" class="btn-choose">📁 Choose Text File (.txt)</label>
+                <!-- <p class="upload-hint">or drag &amp; drop your file here</p> -->
+                <p class="file-name" id="fileName"></p>
+            </div>
+
+            <!-- Explicit submit button (FIX #7) -->
+            <button type="submit" class="btn-submit" id="submitBtn" disabled>
+                🚀 Analyse Text
+            </button>
+        </form>
+
+        <div class="info-box">
+            <strong>ℹ️ How it works:</strong>
+            • Reads the uploaded .txt file and processes it character by character.<br>
+            • A DFA with 19 states simulates the recognition of stop words.<br>
+            • Trap state terminates processing early on invalid paths.<br>
+            • Word boundaries are detected via non-alphabetic characters.<br>
+            • Stop words followed by punctuation (e.g. "the,") are still recognised correctly.
+        </div>
+
+    </div><!-- /.content -->
+</div>
+
+<script>
+    const fileInput  = document.getElementById('fileInput');
+    const fileNameEl = document.getElementById('fileName');
+    const submitBtn  = document.getElementById('submitBtn');
+    const uploadArea = document.getElementById('uploadArea');
+
+    // Show selected filename and enable submit
+    fileInput.addEventListener('change', () => {
+        if (fileInput.files.length > 0) {
+            fileNameEl.textContent = '📄 ' + fileInput.files[0].name;
+            submitBtn.disabled = false;
+        }
+    });
+
+    // Drag-and-drop support
+    uploadArea.addEventListener('dragover', e => {
+        e.preventDefault();
+        uploadArea.classList.add('drag-over');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('drag-over');
+    });
+    uploadArea.addEventListener('drop', e => {
+        e.preventDefault();
+        uploadArea.classList.remove('drag-over');
+        const f = e.dataTransfer.files[0];
+        if (f && f.name.endsWith('.txt')) {
+            // Assign dropped file to the input
+            const dt = new DataTransfer();
+            dt.items.add(f);
+            fileInput.files = dt.files;
+            fileNameEl.textContent = '📄 ' + f.name;
+            submitBtn.disabled = false;
+        } else {
+            alert('Please drop a .txt file.');
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,44 @@
+# ── Python ────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.egg
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# ── Virtual environments ───────────────────────────────────────
+venv/
+env/
+.env/
+.venv/
+ENV/
+
+# ── Flask / app specific ───────────────────────────────────────
+uploads/
+instance/
+*.db
+*.sqlite
+
+# ── Environment variables ──────────────────────────────────────
+.env
+.flaskenv
+
+# ── OS files ───────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── IDE / editor ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# ── Pytest / coverage ──────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
