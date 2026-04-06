@@ -109,6 +109,7 @@ State -1  →  TRAP (early exit)
 
 Course: CPT411 — Automata Theory  
 Assignment: L6 — English Stop Words Finder
+
 **Sabrina binti Sofian**  
 **Dershyani Thessaruva**  
 **Tejashree Laxmi**  
